@@ -77,3 +77,15 @@ git push
 ```
 
 Repeat the same workflow for `frontend` or `cli`.
+
+## Building the release bundle
+
+The `bundle/` submodule is generated output. Rebuild it after source-layer
+changes with:
+
+```bash
+node scripts/build-bundle.mjs --push
+```
+
+This builds the Angular UI, combines it with the Bun server and CLI, pushes
+the `bundle` branch, and updates the pinned bundle pointer on `main`.
