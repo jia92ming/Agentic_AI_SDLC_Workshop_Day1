@@ -1,0 +1,8 @@
+{
+  "name": "snip-cli",
+  "version": "1.0.0",
+  "description": "A zero-dependency command-line client for Snip",
+  "bin": {
+    "snip": "cli.js"
+  }
+}
