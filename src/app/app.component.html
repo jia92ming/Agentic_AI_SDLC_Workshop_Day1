@@ -1,0 +1,62 @@
+<main class="page">
+  <section class="hero">
+    <p class="eyebrow">SNIP · SIMPLE LINK SHARING</p>
+    <h1>Make every link<br><span>short and sweet.</span></h1>
+    <p class="subtitle">Paste a long URL and get a clean, shareable link in seconds.</p>
+
+    <form class="link-form" (ngSubmit)="submit()">
+      <input
+        name="url"
+        type="url"
+        [ngModel]="url()"
+        (ngModelChange)="url.set($event)"
+        placeholder="https://your-long-url.com/..."
+        aria-label="URL to shorten"
+      />
+      <button type="submit" [disabled]="submitting()">
+        {{ submitting() ? 'Shortening…' : 'Shorten' }}
+      </button>
+    </form>
+
+    @if (shortLink(); as link) {
+      <div class="notice success">
+        <span>Your short link is ready</span>
+        <a [href]="link.shortUrl" target="_blank" rel="noopener">{{ link.shortUrl }}</a>
+      </div>
+    }
+    @if (error()) {
+      <div class="notice error">{{ error() }}</div>
+    }
+  </section>
+
+  <section class="links-card">
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow">YOUR LINKS</p>
+        <h2>Recent links</h2>
+      </div>
+      <span class="count">{{ links().length }}</span>
+    </div>
+
+    @if (links().length > 0) {
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Short link</th><th>Original URL</th><th>Hits</th></tr>
+          </thead>
+          <tbody>
+            @for (link of links(); track link.code) {
+              <tr>
+                <td><a [href]="link.shortUrl" target="_blank" rel="noopener">{{ link.code }}</a></td>
+                <td class="original-url" [title]="link.url">{{ link.url }}</td>
+                <td>{{ link.hits }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    } @else {
+      <p class="empty">No links yet. Your shortened links will appear here.</p>
+    }
+  </section>
+</main>
