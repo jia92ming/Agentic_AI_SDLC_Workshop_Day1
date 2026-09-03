@@ -22,6 +22,14 @@ function hasStagedChanges(cwd) {
   return spawnSync('git', ['diff', '--cached', '--quiet'], { cwd }).status !== 0;
 }
 
+function isAhead(remoteRef, localRef, cwd) {
+  const result = spawnSync('git', ['rev-list', '--count', `${remoteRef}..${localRef}`], {
+    cwd,
+    encoding: 'utf8'
+  });
+  return result.status !== 0 || Number(result.stdout.trim()) > 0;
+}
+
 run('git', ['submodule', 'update', '--init', '--remote', 'backend', 'frontend', 'cli']);
 run('npm', ['install'], join(root, 'frontend'));
 run('npx', ['ng', 'build'], join(root, 'frontend'));
@@ -47,6 +55,7 @@ writeFileSync(join(bundle, 'package.json'), JSON.stringify({
 }, null, 2) + '\n');
 writeFileSync(join(bundle, 'Dockerfile'), [
   'FROM oven/bun:1-alpine',
+  'WORKDIR /app',
   'COPY . .',
   'ENV PORT=3000',
   'EXPOSE 3000',
@@ -55,21 +64,39 @@ writeFileSync(join(bundle, 'Dockerfile'), [
 ].join('\n'));
 writeFileSync(join(bundle, '.dockerignore'), 'node_modules\n.git\n');
 writeFileSync(join(bundle, 'railway.json'), JSON.stringify({
-  build: { builder: 'DOCKERFILE' }
+  $schema: 'https://railway.app/railway.schema.json',
+  build: { builder: 'DOCKERFILE', dockerfilePath: 'Dockerfile' },
+  deploy: { startCommand: 'bun server.js', restartPolicyType: 'ON_FAILURE' }
 }, null, 2) + '\n');
 
 run('git', ['add', '-A'], bundle);
 if (hasStagedChanges(bundle)) {
   run('git', ['commit', '-m', 'Generate bundle release'], bundle);
-  if (shouldPush) run('git', ['push', 'origin', 'HEAD:bundle'], bundle);
 } else {
   console.log('bundle: unchanged');
 }
+// Pushing is guarded on the remote being behind, not on a fresh commit, so an
+// already-committed but unpushed bundle still reaches origin.
+if (shouldPush) {
+  run('git', ['fetch', 'origin', 'bundle'], bundle);
+  if (isAhead('origin/bundle', 'HEAD', bundle)) {
+    run('git', ['push', 'origin', 'HEAD:bundle'], bundle);
+  } else {
+    console.log('bundle: already published');
+  }
+}
 
 run('git', ['add', 'bundle']);
-if (spawnSync('git', ['diff', '--cached', '--quiet'], { cwd: root }).status !== 0) {
+if (hasStagedChanges(root)) {
   run('git', ['commit', '-m', 'Bump bundle submodule']);
-  if (shouldPush) run('git', ['push', 'origin', 'main']);
 } else {
   console.log('main: unchanged');
+}
+if (shouldPush) {
+  run('git', ['fetch', 'origin', 'main']);
+  if (isAhead('origin/main', 'HEAD', root)) {
+    run('git', ['push', 'origin', 'HEAD:main']);
+  } else {
+    console.log('main: already published');
+  }
 }
